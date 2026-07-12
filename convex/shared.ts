@@ -74,6 +74,19 @@ export const WITHHELD_ARCHETYPE_FIELDS = [
 ] as const;
 
 /** Public (coaching-safe) archetype projection. */
+export type ArchetypePublic = {
+  archetypeId: string;
+  name: string;
+  glyph?: string;
+  description: string;
+  timeEstimate: string;
+  difficulty: string;
+  skills: string[];
+  hazards: string[];
+  remixPrompt: string;
+  tags: string[];
+};
+
 export const vArchetypePublic = v.object({
   archetypeId: v.id("archetypes"),
   name: v.string(),

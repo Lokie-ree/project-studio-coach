@@ -142,7 +142,7 @@ export default defineSchema({
     remixPrompt: v.optional(v.string()),
     hazardObserved: v.optional(v.string()),
     actualTime: v.optional(
-      v.object({ sessions: v.number(), estimateWas: v.string() }),
+      v.object({ daysElapsed: v.number(), estimateWas: v.string() }),
     ),
     scopeRewrite: v.optional(v.object({ before: v.string(), after: v.string() })),
     approvedBy: v.id("teachers"),

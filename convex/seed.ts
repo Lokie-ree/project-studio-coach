@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { parseArchetypes } from "./lib/parseArchetypes";
 import { rag, chunkByHeaders } from "./rag";
 import { vDifficulty } from "./shared";
@@ -99,13 +100,20 @@ const KNOWLEDGE_FILES = [
   },
 ] as const;
 
+type SeedResult = {
+  teacherId: Id<"teachers">;
+  archetypes: { parsed: number; inserted: number; updated: number };
+  ingested: Record<string, string>;
+};
+
 export const run = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SeedResult> => {
     // 1. The teacher. student-context.md names him: the coach uses the real name.
-    const teacherId = await ctx.runMutation(internal.seed.ensureTeacher, {
-      name: "Mr. L",
-    });
+    const teacherId: Id<"teachers"> = await ctx.runMutation(
+      internal.seed.ensureTeacher,
+      { name: "Mr. L" },
+    );
 
     // 2. Parse and upsert all 24 archetypes from the markdown, verbatim.
     const parsed = parseArchetypes(projectArchetypes);
