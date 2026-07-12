@@ -1,0 +1,31 @@
+{
+  "name": "project-studio-coach",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "vite",
+    "dev:backend": "convex dev",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit && tsc -p convex --noEmit",
+    "seed": "convex run seed:run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.84",
+    "@convex-dev/agent": "^0.6.4",
+    "@convex-dev/aggregate": "^0.2.2",
+    "@convex-dev/persistent-text-streaming": "^0.3.3",
+    "@convex-dev/rag": "^0.7.5",
+    "@convex-dev/rate-limiter": "^0.3.2",
+    "@convex-dev/workflow": "^0.4.4",
+    "@convex-dev/workpool": "^0.4.7",
+    "ai": "^6.0.224",
+    "convex": "^1.42.1",
+    "convex-helpers": "^0.1.120",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  }
+}
