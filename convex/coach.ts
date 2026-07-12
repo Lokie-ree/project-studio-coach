@@ -77,24 +77,38 @@ export const streamResponse = internalAction({
     });
     if (!dyn) throw new Error("No project for thread");
 
-    const result = await coachAgent.streamText(
-      ctx,
-      { threadId, userId: dyn.studentId },
-      {
-        promptMessageId,
-        system: buildInstructions({
-          stage: dyn.stage,
-          studentName: dyn.studentName,
-          teacherNotes: dyn.teacherNotes,
-          worksBetweenMeetings: dyn.worksBetweenMeetings,
-          projectTitle: dyn.projectTitle,
-          sparkText: dyn.sparkText,
-          archetypeName: dyn.archetypeName,
-        }),
-      },
-      { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
-    );
-    await result.consumeStream();
+    try {
+      const result = await coachAgent.streamText(
+        ctx,
+        { threadId, userId: dyn.studentId },
+        {
+          promptMessageId,
+          system: buildInstructions({
+            stage: dyn.stage,
+            studentName: dyn.studentName,
+            teacherNotes: dyn.teacherNotes,
+            worksBetweenMeetings: dyn.worksBetweenMeetings,
+            projectTitle: dyn.projectTitle,
+            sparkText: dyn.sparkText,
+            archetypeName: dyn.archetypeName,
+          }),
+        },
+        { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
+      );
+      await result.consumeStream();
+    } catch (e) {
+      // Never leave a student staring at "coach is thinking…". Be honest.
+      console.error("Coach LLM call failed:", e);
+      await saveMessage(ctx, components.agent, {
+        threadId,
+        message: {
+          role: "assistant",
+          content:
+            "I hit a technical snag on my end just now — that one's on me, not you. " +
+            "Give it another try in a minute, and if I keep doing this, tell Mr. L the coach is down.",
+        },
+      });
+    }
   },
 });
 
