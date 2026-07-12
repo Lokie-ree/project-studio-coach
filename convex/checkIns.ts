@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { saveMessage } from "@convex-dev/agent";
 import { internalMutation, mutation } from "./_generated/server";
 import { components, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * The 48-hour Milestone Zero check-in. Scheduled atomically with the
@@ -29,6 +30,35 @@ export const milestoneZeroCheckIn = internalMutation({
           `How'd it go — done, partly, or not started? All three are useful answers. ` +
           `If it's not started, that usually means it was bigger than it looked, and we can cut it in half.`,
       },
+    });
+  },
+});
+
+/**
+ * Student commits their Milestone Zero from the Shape screen — typed by them,
+ * in their words, by construction. Same path as the coach tool.
+ */
+export const commitMilestoneZero = mutation({
+  args: {
+    projectId: v.id("projects"),
+    text: v.string(),
+    hoursUntilDue: v.number(),
+  },
+  handler: async (
+    ctx,
+    { projectId, text, hoursUntilDue },
+  ): Promise<Id<"milestoneZeros">> => {
+    const project = await ctx.db.get(projectId);
+    if (!project) throw new Error("Project not found");
+    if (text.trim().length < 10) {
+      throw new Error("Write the whole sentence — what, by when, so that what.");
+    }
+    const clamped = Math.max(1, Math.min(96, hoursUntilDue));
+    return await ctx.runMutation(internal.coachData.commitMilestoneZero, {
+      projectId,
+      studentId: project.studentId,
+      text,
+      dueAt: Date.now() + clamped * 60 * 60 * 1000,
     });
   },
 });

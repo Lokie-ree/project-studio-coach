@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { saveMessage } from "@convex-dev/agent";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { components, internal } from "./_generated/api";
-import { nextStage, vStage, PROFILE_VERSION, type Stage } from "./shared";
+import { nextStage, PROFILE_VERSION, type Stage } from "./shared";
 import { workflow } from "./workflows";
 import type { WorkflowId } from "@convex-dev/workflow";
 
