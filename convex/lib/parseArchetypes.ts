@@ -135,8 +135,13 @@ export function parseArchetypes(markdown: string): ParsedArchetype[] {
           current.skills = value ? [value] : [];
           break;
         case "hazards":
-          current.hazards =
-            value.toLowerCase().startsWith("none") ? [] : splitList(value);
+          // "None" alone (or "None — this is low-risk") means no hazards, but
+          // "None for personal use; copyrighted content if you copy verbatim"
+          // carries a real second clause — keep every clause that isn't
+          // itself a "None…" statement.
+          current.hazards = splitList(value).filter(
+            (h) => !/^none\b/i.test(h),
+          );
           break;
         case "goal":
           current.goal = value;
