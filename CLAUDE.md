@@ -4,7 +4,9 @@ An AI coaching app that teaches students to scope vague, oversized project ideas
 down into something they can actually finish. Built for a voluntary, ungraded
 high-school club (grades 9–12, no prior coding experience) run by **Mr. L**.
 
-Read the founding docs before touching anything substantive:
+Read the founding docs before touching anything substantive. **They live in
+`docs/`** (moved from the repo root after the initial build; scripts accept
+either location):
 
 | File | What it is |
 |---|---|
