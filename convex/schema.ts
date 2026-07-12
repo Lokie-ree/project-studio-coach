@@ -257,7 +257,8 @@ export default defineSchema({
     teacherComment: v.optional(v.string()),
   })
     .index("by_status", ["status"])
-    .index("by_teacher", ["teacherId", "status"]),
+    .index("by_teacher", ["teacherId", "status"])
+    .index("by_project", ["projectId"]),
 
   // ── Budget bookkeeping ────────────────────────────────────────────────────
   // Actual token usage per LLM call, for debiting budgets and honest reporting.

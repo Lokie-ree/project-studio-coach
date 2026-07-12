@@ -15,6 +15,7 @@ export const milestoneZeroCheckIn = internalMutation({
   handler: async (ctx, { milestoneZeroId }) => {
     const m0 = await ctx.db.get(milestoneZeroId);
     if (!m0 || m0.status !== "committed") return; // already done or revised
+    if (m0.checkedInAt) return; // sweep or an earlier job already asked
     const project = await ctx.db.get(m0.projectId);
     if (!project?.threadId || project.status !== "active") return;
 

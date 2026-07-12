@@ -350,6 +350,9 @@ export const advanceStage = mutation({
       throw new Error("Spark needs the idea first");
     }
     if (project.stage === "shape") {
+      if (!project.goal) {
+        throw new Error("Shape isn't done until the goal is written — one sentence, yours");
+      }
       const m0 = await ctx.db
         .query("milestoneZeros")
         .withIndex("by_project", (q) => q.eq("projectId", projectId))
@@ -379,6 +382,7 @@ export const completeProject = mutation({
     if (project.stage !== "export") {
       throw new Error("Projects complete from Export");
     }
+    if (project.status === "completed") return; // idempotent — never re-draft
     await ctx.db.patch(projectId, {
       status: "completed",
       updatedAt: Date.now(),

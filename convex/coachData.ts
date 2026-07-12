@@ -42,9 +42,10 @@ export const commitMilestoneZero = internalMutation({
       dueAt,
       status: "committed",
     });
-    // The 48-hour check-in: atomic with this commitment.
-    const jobId = await ctx.scheduler.runAfter(
-      48 * 60 * 60 * 1000,
+    // The check-in fires when the commitment comes due (not a fixed 48h —
+    // dueAt can be sooner), atomic with this commitment.
+    const jobId = await ctx.scheduler.runAt(
+      dueAt,
       internal.checkIns.milestoneZeroCheckIn,
       { milestoneZeroId: m0Id },
     );

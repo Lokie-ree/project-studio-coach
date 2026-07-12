@@ -27,12 +27,13 @@ export const draftContributions = internalMutation({
     if (!student) return;
     const teacherId = student.teacherId;
 
-    // Don't double-draft if completeProject somehow runs twice.
+    // Don't double-draft: any prior queue rows for this project (pending OR
+    // already reviewed) mean the write-back has happened.
     const already = await ctx.db
       .query("reviewQueue")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
-    if (already.some((r) => r.projectId === projectId)) return;
+      .withIndex("by_project", (q) => q.eq("projectId", projectId))
+      .first();
+    if (already) return;
 
     const base = {
       projectId,
