@@ -17,23 +17,28 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   // spammed is a coach that gets spammed.
   studentRequests: { kind: "fixed window", rate: 1, period: 5_000, capacity: 3 },
 
-  // Per-student token budget: ~25k/hour, bank up to 75k. maxReserved caps
-  // how far one runaway response can drive a student into debt.
+  // Per-student token budget. maxReserved caps how far one runaway response
+  // can drive a student into debt.
+  // PLAYTEST SETTING (2026-07-15): raised 8x so scripted persona runs can
+  // talk continuously. Club values, restore after playtest:
+  //   rate 25_000, capacity 75_000, maxReserved 30_000
   studentTokens: {
     kind: "token bucket",
-    rate: 25_000,
+    rate: 200_000,
     period: HOUR,
-    capacity: 75_000,
-    maxReserved: 30_000,
+    capacity: 400_000,
+    maxReserved: 100_000,
   },
 
   // Class-wide budget — the outer, nested cap. Sharded: every student in the
   // room contends on this one key.
+  // PLAYTEST SETTING (2026-07-15): raised 4x. Club values, restore after:
+  //   rate 250_000, capacity 500_000
   classTokens: {
     kind: "token bucket",
-    rate: 250_000,
+    rate: 1_000_000,
     period: HOUR,
-    capacity: 500_000,
+    capacity: 2_000_000,
     shards: 5,
   },
 });
