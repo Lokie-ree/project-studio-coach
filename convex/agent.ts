@@ -20,7 +20,9 @@ export const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL ?? "gpt-5.6-terra";
 
 export const coachAgent = new Agent(components.agent, {
   name: "Project Studio Coach",
-  languageModel: openai.chat(CHAT_MODEL),
+  // Responses API, not Chat Completions: gpt-5.6 models reject function
+  // tools on /v1/chat/completions ("use /v1/responses") — seen live 2026-07-14.
+  languageModel: openai.responses(CHAT_MODEL),
   // Enables semantic search over message history; same model family as RAG.
   embeddingModel: openai.embedding(EMBEDDING_MODEL),
   // Static fallback; every real call passes dynamic instructions built in
