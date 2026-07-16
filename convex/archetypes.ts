@@ -62,10 +62,14 @@ export const search = query({
       candidates = candidates.filter((a) => a.difficulty === args.difficulty);
     }
     if (args.interests) {
+      // Stem trailing 's' so "playlists" matches "playlist" — the playtest
+      // showed the plural/singular gap hiding a student's best-fit shape.
+      const stem = (w: string) => (w.length > 3 ? w.replace(/s$/, "") : w);
       const terms = args.interests
         .toLowerCase()
         .split(/[^a-z0-9]+/)
-        .filter((t) => t.length > 2);
+        .filter((t) => t.length > 2)
+        .map(stem);
       if (terms.length > 0) {
         const scored = candidates.map((a) => {
           const hay = (
@@ -78,7 +82,11 @@ export const search = query({
             a.skills.join(" ") +
             " " +
             a.tags.join(" ")
-          ).toLowerCase();
+          )
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .map(stem)
+            .join(" ");
           const score = terms.reduce(
             (s, t) => s + (hay.includes(t) ? 1 : 0),
             0,

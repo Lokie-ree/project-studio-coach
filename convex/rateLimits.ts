@@ -17,28 +17,28 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   // spammed is a coach that gets spammed.
   studentRequests: { kind: "fixed window", rate: 1, period: 5_000, capacity: 3 },
 
-  // Per-student token budget. maxReserved caps how far one runaway response
-  // can drive a student into debt.
-  // PLAYTEST SETTING (2026-07-15): raised 8x so scripted persona runs can
-  // talk continuously. Club values, restore after playtest:
-  //   rate 25_000, capacity 75_000, maxReserved 30_000
+  // Per-student token budget, calibrated from the 2026-07-15 playtest: a
+  // real coach turn costs ~8-12k tokens with context, and the original
+  // 25k/hr starved a normal-paced session after 3 turns. 120k/hr sustains a
+  // ~12-turn hour; 250k capacity covers one full continuous session.
+  // maxReserved caps how far one runaway response can drive a student into
+  // debt.
   studentTokens: {
     kind: "token bucket",
-    rate: 200_000,
+    rate: 120_000,
     period: HOUR,
-    capacity: 400_000,
-    maxReserved: 100_000,
+    capacity: 250_000,
+    maxReserved: 60_000,
   },
 
   // Class-wide budget — the outer, nested cap. Sharded: every student in the
-  // room contends on this one key.
-  // PLAYTEST SETTING (2026-07-15): raised 4x. Club values, restore after:
-  //   rate 250_000, capacity 500_000
+  // room contends on this one key. 5x the per-student rate: five students
+  // coaching flat-out simultaneously is the club's realistic ceiling.
   classTokens: {
     kind: "token bucket",
-    rate: 1_000_000,
+    rate: 600_000,
     period: HOUR,
-    capacity: 2_000_000,
+    capacity: 1_200_000,
     shards: 5,
   },
 });

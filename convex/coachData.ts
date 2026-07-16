@@ -88,6 +88,23 @@ export const insertDefection = internalMutation({
     honored: v.boolean(),
   },
   handler: async (ctx, args) => {
+    // The model calls logDefection liberally (ask, insist, and sometimes
+    // again on later turns). One defection event = one row: within a 2-hour
+    // window on the same project, update the existing row instead of
+    // inserting. honored:true wins; the first verbatim request is kept.
+    // Playtest 2026-07-15 found 6 rows for a single defection.
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const recent = await ctx.db
+      .query("defections")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("desc")
+      .first();
+    if (recent && Date.now() - recent._creationTime < TWO_HOURS) {
+      await ctx.db.patch(recent._id, {
+        honored: recent.honored || args.honored,
+      });
+      return recent._id;
+    }
     return await ctx.db.insert("defections", args);
   },
 });
