@@ -1,66 +1,89 @@
-# Project Studio Coach — Founding Files
+# Project Studio Coach
 
----
+An AI coach that teaches students to **scope a vague, oversized idea down into
+a project they can actually finish** — and then writes what they learned back
+into a living archetype library so the next student inherits it. Built for a
+voluntary, ungraded high-school club run by Mr. L.
 
-## Status: ready to run
+The pedagogical thesis is ISTE+ASCD *Profile of an AI-Ready Graduate*, Learner
+skill 1.1: *"students use AI to focus loosely defined goals into more
+actionable ones."* The **student** does the focusing. The coach withholds the
+library's pre-written plans until the student's own plan exists, then reveals
+them as a comparison. See `CLAUDE.md` (ground truth) and `docs/` (the founding
+documents).
 
-Both former blockers are resolved. `coach-instructions.md` has the real
-(adapted) Gem export, and `student-context.md`'s TODOs are filled in. All 24
-archetypes in `project-archetypes.md` now carry real `goal`/`nonGoals`/
-`milestones`/`m0` fields, not just description/time/difficulty/hazards.
+## Stack
 
-**There is no prior prototype.** `project-studio-coach.html` — the old
-design-system reference — was intentionally dropped; the visual design was a
-couple of months old and is being designed fresh instead of ported. Prompt 1
-now designs the UI from scratch rather than reusing a file that no longer
-exists.
+- **Convex** backend — components: Agent, Workflow, RAG, Rate Limiter,
+  Aggregate, Persistent Text Streaming, crons
+- **OpenAI via Vercel AI SDK** (`@ai-sdk/openai`, chat model `gpt-5.6-terra`,
+  embeddings `text-embedding-3-small` @ 1536 dims). All model calls run
+  server-side in Convex actions; the API key never reaches the browser.
+  **This repo never calls the Anthropic API.**
+- **Vite + React + TypeScript** frontend
 
----
+## Setup
 
-## Run order
+```bash
+npm install
+npx convex dev            # dev deployment (already configured in .env.local)
 
-Run every prompt from the **repo root** — the directory this README is in,
-the parent of `prompts/` — not from inside `prompts/` itself.
+# The OPENAI_API_KEY on the deployment is managed in the Convex dashboard (active). To rotate:
+npx convex env set OPENAI_API_KEY sk-...
 
-| | File | |
-|---|---|---|
-| 1 | `prompts/prompt-0-grounding.md` | ~5 min. Writes `CLAUDE.md`. Cheap. |
-| 2 | `prompts/prompt-1-main-run.md` | The ultracode run. Hours. |
-| 3 | `prompts/prompt-2-playtest.md` | ~hour 5. Once it builds, before you polish. |
+# Seed: parses docs/project-archetypes.md (24 archetypes) + ingests the
+# coaching knowledge into RAG (requires the valid key for embeddings):
+node scripts/sync-knowledge.mjs
+npx convex run seed:run
+# If RAG ingestion failed earlier (bad key), re-run just that part:
+npx convex run seed:ingestKnowledge
 
----
+npm run dev               # frontend on :5173 + convex dev watcher
+```
 
-## The files
+Student app: `http://localhost:5173` · Teacher screen: `http://localhost:5173/#/teacher`
 
-| File | Role |
+## How it works
+
+**Spark → Expand → Narrow → Shape → Checkpoint → Export.** The stage pointer
+lives in `projects.stage` (close the tab at Narrow, reopen at Narrow) and is
+mirrored by a durable Workflow whose steps park on `awaitEvent` between
+stages. Conversation history streams through the Agent component's persisted
+deltas, so a reload never loses the thread.
+
+The archetype plan fields (`goal`, `nonGoals`, `milestones`, `m0`) are
+**withheld at the query layer** — `archetypes:search` structurally cannot
+return them (explicit-pick projection + return validator). The only door is
+the logged reveal: partial at rung 3 of the stuck-student ladder, full at
+Export.
+
+Completed projects draft **contributions** (a real remix prompt, the real
+before/after scope cut, the hazard the student hit, actual vs. estimated
+time) into a teacher review queue. Nothing enters the library unapproved.
+Genuinely new shapes are the rare path, also teacher-gated.
+
+`profileEvidence` is reflection, not assessment: student-owned, captured only
+from text the student typed, never shown to the teacher.
+
+## Honest limitations (prototype)
+
+- **No authentication.** Identity is "pick your name," like a club sign-in
+  sheet. The teacher screen is an unauthenticated route. Do not deploy beyond
+  a trusted club without adding auth.
+- **Live coach behavior is prompt-engineered** from `docs/coach-instructions.md`
+  and playtested via the 4-persona CLI harness; `prompts/prompt-2-playtest.md`
+  tracks remaining live-verification work. The deployment's OpenAI key is
+  managed in the Convex dashboard environment.
+- Streaming uses the Agent component's persisted delta streaming (the
+  Persistent Text Streaming component is registered but idle — agent-native
+  streaming already survives reloads, which is the requirement).
+
+## Scripts
+
+| Command | What |
 |---|---|
-| `iste-alignment.md` | The Profile as primary framework. **The central constraint lives here.** |
-| `coaching-transcripts.md` | **The voice.** The highest-value file in the repo. |
-| `coaching-anti-patterns.md` | The failure modes. Every other file is positive examples. |
-| `coach-instructions.md` | Six-stage loop, adapted from the original Gem export. |
-| `student-context.md` | Who's on the other side — filled in. |
-| `project-archetypes.md` | 24 project shapes, each with plan fields now **withheld by default** at runtime. |
-| `scope-examples.md` | Before/after scope rewrites + red-flag checklist |
-| `milestone-zero-examples.md` | ~40 first deliverables + the formula |
-
----
-
-## What changed from the original plan
-
-The prototype handed students a plan. Under the ISTE Profile — Learner skill 1.1, *"students use AI to focus loosely defined goals into more actionable ones"* — **that inverts the skill it claims to teach.**
-
-So: **the archetype's plan is withheld by default.** The student derives their own goal, cut list, and Milestone Zero. The archetype's version is revealed afterward, as comparison.
-
-This makes the app **harder to use on purpose**, and that is the central risk. Every incentive the student has is to close the tab and ask ChatGPT. The engagement mechanisms in `student-context.md` — visible withholding, the earned reveal, the ninety-second Spark, the timeboxed struggle, the open exit — are what make the hard path the one they *want* to walk.
-
-If students bail at Narrow, you have built a beautiful thing nobody finishes. Which is, precisely, the problem this project exists to solve.
-
----
-
-## Three decisions already made — don't let Fable re-open them
-
-**Profile primary, Standards as substrate.** The ISTE+ASCD *Profile of an AI-Ready Graduate* (2026.07) is the target. Store role IDs, never display strings — the framework already renamed *Ideator* to *Problem Solver* once.
-
-**Reflection, not assessment.** `profileEvidence` is student-owned. A coach that files reports is a coach nobody tells the truth to.
-
-**The coach is a bridge between two humans.** Escalating to the teacher is the coach working, not the coach failing. Name the teacher early and mean it.
+| `npm run dev` | Vite + convex dev, together |
+| `npm run typecheck` | Both TS projects |
+| `node scripts/sync-knowledge.mjs` | Founding markdown → `convex/knowledge/*.ts` |
+| `npx convex run seed:run` | Teacher + 24 archetypes + RAG ingest |
+| `node scripts/verify-ui.mjs` | Playwright walk of the student + teacher flows |
