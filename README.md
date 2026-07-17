@@ -28,7 +28,7 @@ documents).
 npm install
 npx convex dev            # dev deployment (already configured in .env.local)
 
-# The deployment needs a VALID OpenAI key (the currently-set one is expired):
+# The OPENAI_API_KEY on the deployment is managed in the Convex dashboard (active). To rotate:
 npx convex env set OPENAI_API_KEY sk-...
 
 # Seed: parses docs/project-archetypes.md (24 archetypes) + ingests the
@@ -70,12 +70,10 @@ from text the student typed, never shown to the teacher.
 - **No authentication.** Identity is "pick your name," like a club sign-in
   sheet. The teacher screen is an unauthenticated route. Do not deploy beyond
   a trusted club without adding auth.
-- **The OpenAI key currently on the deployment is dead** — live coaching and
-  RAG ingestion are blocked until it's replaced (one command, above). All
-  non-LLM behavior is verified working; the coach's conversational behavior
-  (pushback at Narrow, the ladder, defection handling) is prompt-engineered
-  from `docs/coach-instructions.md` but **unverified live** until then —
-  `prompts/prompt-2-playtest.md` is the plan for that.
+- **Live coach behavior is prompt-engineered** from `docs/coach-instructions.md`
+  and playtested via the 4-persona CLI harness; `prompts/prompt-2-playtest.md`
+  tracks remaining live-verification work. The deployment's OpenAI key is
+  managed in the Convex dashboard environment.
 - Streaming uses the Agent component's persisted delta streaming (the
   Persistent Text Streaming component is registered but idle — agent-native
   streaming already survives reloads, which is the requirement).
