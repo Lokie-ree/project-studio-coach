@@ -3,6 +3,34 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+/** One save button's lifecycle: idle → saving → saved | error; editing the field returns it to idle. */
+function useSaveStatus(initial: SaveStatus = "idle") {
+  const [status, setStatus] = useState<SaveStatus>(initial);
+  const [error, setError] = useState<string | null>(null);
+  return {
+    status,
+    error,
+    locked: status === "saving" || status === "saved",
+    edited: () => setStatus("idle"),
+    run: async (save: () => Promise<unknown>) => {
+      if (status === "saving") return;
+      setStatus("saving");
+      setError(null);
+      try {
+        await save();
+        setStatus("saved");
+      } catch (e) {
+        setError(e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "") : "Try again");
+        setStatus("error");
+      }
+    },
+    label: (done: string, idle: string) =>
+      status === "saving" ? "Saving…" : status === "saved" ? done : status === "error" ? "Didn't save — try again" : idle,
+  };
+}
+
 /* ── EXPAND: the menu is bigger than you think ─────────────────────────── */
 
 export function ExpandPanel({
@@ -15,7 +43,7 @@ export function ExpandPanel({
   const archetypes = useQuery(api.archetypes.search, { limit: 24 });
   const choose = useMutation(api.projects.chooseArchetype);
   const [rejected, setRejected] = useState("");
-  const [savedNote, setSavedNote] = useState(false);
+  const savedNote = useSaveStatus();
 
   if (!archetypes) return null;
   return (
@@ -63,23 +91,20 @@ export function ExpandPanel({
         placeholder="e.g. almost did the map thing, but I care more about the story than the places"
         onChange={(e) => {
           setRejected(e.target.value);
-          setSavedNote(false);
+          savedNote.edited();
         }}
       />
       <div style={{ marginTop: 8 }}>
         <button
           className="btn"
-          disabled={!rejected.trim() || savedNote}
-          onClick={async () => {
-            await choose({
+          disabled={!rejected.trim() || savedNote.locked}
+          onClick={() => savedNote.run(() => choose({
               projectId,
               archetypeId: (chosenArchetypeId as Id<"archetypes">) ?? undefined,
               consideredAndRejected: rejected,
-            });
-            setSavedNote(true);
-          }}
+            }))}
         >
-          {savedNote ? "Noted ✓" : "Keep that thought"}
+          {savedNote.label("Noted ✓", "Keep that thought")}
         </button>
       </div>
     </div>
@@ -98,7 +123,7 @@ export function NarrowPanel({
   const save = useMutation(api.projects.saveScopeRewrite);
   const [before, setBefore] = useState(sparkText);
   const [after, setAfter] = useState("");
-  const [saved, setSaved] = useState(false);
+  const saved = useSaveStatus();
 
   return (
     <div className="card">
@@ -122,19 +147,16 @@ export function NarrowPanel({
         placeholder="Smaller. Sharper. Still yours."
         onChange={(e) => {
           setAfter(e.target.value);
-          setSaved(false);
+          saved.edited();
         }}
       />
       <div style={{ marginTop: 10 }}>
         <button
           className="btn btn-primary"
-          disabled={!before.trim() || !after.trim() || saved}
-          onClick={async () => {
-            await save({ projectId, before, after });
-            setSaved(true);
-          }}
+          disabled={!before.trim() || !after.trim() || saved.locked}
+          onClick={() => saved.run(() => save({ projectId, before, after }))}
         >
-          {saved ? "Saved ✓" : "That's the cut"}
+          {saved.label("Saved ✓", "That's the cut")}
         </button>
       </div>
     </div>
@@ -166,8 +188,8 @@ export function ShapePanel({
   );
   const [m0Text, setM0Text] = useState(existing.m0?.text ?? "");
   const [hours, setHours] = useState(48);
-  const [shapeSaved, setShapeSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const shapeSaved = useSaveStatus();
+  const m0 = useSaveStatus();
 
   const setAt = (arr: string[], i: number, v: string, set: (a: string[]) => void) => {
     const next = [...arr];
@@ -187,7 +209,7 @@ export function ShapePanel({
         placeholder="Someone plays/reads/uses it and…"
         onChange={(e) => {
           setGoal(e.target.value);
-          setShapeSaved(false);
+          shapeSaved.edited();
         }}
       />
 
@@ -201,7 +223,7 @@ export function ShapePanel({
           placeholder={i === 0 ? "This project will NOT include…" : ""}
           onChange={(e) => {
             setAt(nonGoals, i, e.target.value, setNonGoals);
-            setShapeSaved(false);
+            shapeSaved.edited();
           }}
         />
       ))}
@@ -216,7 +238,7 @@ export function ShapePanel({
           placeholder={`${i + 1}.`}
           onChange={(e) => {
             setAt(milestones, i, e.target.value, setMilestones);
-            setShapeSaved(false);
+            shapeSaved.edited();
           }}
         />
       ))}
@@ -229,13 +251,10 @@ export function ShapePanel({
       <div style={{ marginTop: 12 }}>
         <button
           className="btn"
-          disabled={!goal.trim() || shapeSaved}
-          onClick={async () => {
-            await saveShape({ projectId, goal, nonGoals, milestones });
-            setShapeSaved(true);
-          }}
+          disabled={!goal.trim() || shapeSaved.locked}
+          onClick={() => shapeSaved.run(() => saveShape({ projectId, goal, nonGoals, milestones }))}
         >
-          {shapeSaved ? "Plan saved ✓" : "Save the plan"}
+          {shapeSaved.label("Plan saved ✓", "Save the plan")}
         </button>
       </div>
 
@@ -275,20 +294,13 @@ export function ShapePanel({
             </select>
             <button
               className="btn btn-primary"
-              disabled={!m0Text.trim()}
-              onClick={async () => {
-                setError(null);
-                try {
-                  await commitM0({ projectId, text: m0Text, hoursUntilDue: hours });
-                } catch (e) {
-                  setError(e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "") : "Try again");
-                }
-              }}
+              disabled={!m0Text.trim() || m0.status === "saving"}
+              onClick={() => m0.run(() => commitM0({ projectId, text: m0Text, hoursUntilDue: hours }))}
             >
               Commit — I'm doing this
             </button>
           </div>
-          {error && <p className="note" style={{ color: "var(--accent)", marginTop: 6 }}>{error}</p>}
+          {m0.error && <p className="note" style={{ color: "var(--accent)", marginTop: 6 }}>{m0.error}</p>}
         </>
       )}
     </div>
@@ -308,7 +320,7 @@ export function CheckpointPanel({
   const resolve = useMutation(api.checkIns.resolveMilestoneZero);
   const [risk, setRisk] = useState("");
   const [stuck, setStuck] = useState("");
-  const [saved, setSaved] = useState(false);
+  const saved = useSaveStatus();
 
   return (
     <div className="card">
@@ -334,7 +346,7 @@ export function CheckpointPanel({
         placeholder="The honest one, not the impressive one"
         onChange={(e) => {
           setRisk(e.target.value);
-          setSaved(false);
+          saved.edited();
         }}
       />
       <label className="lbl">Anything you're stuck on right now? (fine to leave blank)</label>
@@ -344,19 +356,16 @@ export function CheckpointPanel({
         value={stuck}
         onChange={(e) => {
           setStuck(e.target.value);
-          setSaved(false);
+          saved.edited();
         }}
       />
       <div style={{ marginTop: 10 }}>
         <button
           className="btn btn-primary"
-          disabled={!risk.trim() || saved}
-          onClick={async () => {
-            await save({ projectId, knownRisk: risk, stuckOn: stuck || undefined });
-            setSaved(true);
-          }}
+          disabled={!risk.trim() || saved.locked}
+          onClick={() => saved.run(() => save({ projectId, knownRisk: risk, stuckOn: stuck || undefined }))}
         >
-          {saved ? "Saved ✓" : "That's my answer"}
+          {saved.label("Saved ✓", "That's my answer")}
         </button>
       </div>
     </div>
@@ -394,9 +403,9 @@ export function ExportPanel({
   const evidence = useQuery(api.projects.myEvidence, { studentId, projectId });
 
   const [pitch, setPitch] = useState(project.pitch ?? "");
-  const [pitchSaved, setPitchSaved] = useState(Boolean(project.pitch));
+  const pitchSaved = useSaveStatus(project.pitch ? "saved" : "idle");
   const [comparison, setComparison] = useState("");
-  const [comparisonSaved, setComparisonSaved] = useState(false);
+  const comparisonSaved = useSaveStatus();
 
   return (
     <>
@@ -454,19 +463,16 @@ export function ExportPanel({
           placeholder="So basically…"
           onChange={(e) => {
             setPitch(e.target.value);
-            setPitchSaved(false);
+            pitchSaved.edited();
           }}
         />
         <div style={{ marginTop: 8 }}>
           <button
             className="btn"
-            disabled={!pitch.trim() || pitchSaved}
-            onClick={async () => {
-              await savePitch({ projectId, pitch });
-              setPitchSaved(true);
-            }}
+            disabled={!pitch.trim() || pitchSaved.locked}
+            onClick={() => pitchSaved.run(() => savePitch({ projectId, pitch }))}
           >
-            {pitchSaved ? "Saved ✓" : "That's the pitch"}
+            {pitchSaved.label("Saved ✓", "That's the pitch")}
           </button>
         </div>
       </div>
@@ -511,19 +517,16 @@ export function ExportPanel({
                 value={comparison}
                 onChange={(e) => {
                   setComparison(e.target.value);
-                  setComparisonSaved(false);
+                  comparisonSaved.edited();
                 }}
               />
               <div style={{ marginTop: 8 }}>
                 <button
                   className="btn"
-                  disabled={!comparison.trim() || comparisonSaved}
-                  onClick={async () => {
-                    await saveComparison({ projectId, comparison });
-                    setComparisonSaved(true);
-                  }}
+                  disabled={!comparison.trim() || comparisonSaved.locked}
+                  onClick={() => comparisonSaved.run(() => saveComparison({ projectId, comparison }))}
                 >
-                  {comparisonSaved ? "Kept ✓" : "Keep that"}
+                  {comparisonSaved.label("Kept ✓", "Keep that")}
                 </button>
               </div>
             </>
